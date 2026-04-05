@@ -1,7 +1,25 @@
-# HR AI Agent - Unified System
+
+# 🚀 AI HR Automation Platform
+
+> AI-powered HR automation system with LLM-based resume screening, job posting, and email automation.
+
+## 👨‍💻 My Contribution
+- Integrated LLM-based resume screening
+- Built automation pipeline for HR workflows
+- Improved system performance and structure
 
 A comprehensive HR automation system with integrated Google Calendar scheduling capabilities.
 Team - Ozark
+
+
+## 🧠 Tech Stack
+- Python
+- Flask / FastAPI
+- LLM (OpenAI / Ollama / etc.)
+- NLP + Automation
+
+## 📸 Demo
+(Add screenshots here)
 
 ## Features
 
