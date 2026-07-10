@@ -130,8 +130,8 @@ The 6 notebook pages in `doc/` lay out the complete vision. Mapping to actual co
 
 Sequenced "make it real" before "make it fancy."
 
-> **Progress:** ✅ Phase 0 done (committed) · ✅ Phase 1 done · ✅ Phase 2 done · ⬜ Phases 3–5 remaining.
-> See the "Build Progress Log" at the bottom for details.
+> **Progress:** ✅ Phase 0 · ✅ Phase 1 · ✅ Phase 2 · ✅ Phase 3 · ✅ Phase 4 · ✅ Phase 5 — **all phases built & verified.**
+> Running FREE on Groq (swappable LLM provider). The only remaining step is the Nasiko dashboard deploy (a manual UI action). See the "Build Progress Log" at the bottom.
 
 ### Phase 0 — Hygiene (½ day)
 - Delete `AI-HR-Automation-Platform/`, `HR-automation-system-/`, all `__MACOSX/`, `.DS_Store`, nested `hackathon/hackathon/`.
@@ -207,7 +207,21 @@ Sequenced "make it real" before "make it fancy."
 - Also closed the Phase 1 gap: `posting_agent.reschedule_pending_relaxations()` re-arms auto-relax timers on restart.
 - **Verification:** all files AST-parse; pure logic (checklist, store round-trip, CSV export) passes an isolated functional test. LLM/IMAP/calendar paths follow existing patterns but need a live run (deps + `.env`) to confirm end-to-end.
 
-**Remaining:** Phase 3 (LangGraph supervisor + LangSmith), Phase 4 (hybrid BERT+LLM screening, Ollama option, analytics), Phase 5 (ship expanded tools to Nasiko). Frontend UI for the new Phase 2 endpoints is not yet wired.
+### ✅ LLM provider abstraction (commit `64f8d80`)
+- `llm.py` centralizes the backend via `LLM_PROVIDER` (openai/groq/ollama/gemini/openrouter); all 8 agents use `get_client()` + `MODEL`. Runs FREE on Groq. Note: Groq free tier = per-model daily token cap (~100k); switch `LLM_MODEL` if one runs out.
+
+### ✅ Phase 3 — LangGraph supervisor + LangSmith (commit `1df33c7`)
+- `orchestrator.py`: LangGraph `create_react_agent` supervisor wrapping 8 specialist HR tools; `POST /api/agent/chat`; new "AI Supervisor" dashboard chat page. LangSmith tracing via env vars (auto-on). Verified live on Groq. Needs a strong tool-calling model (70b or gpt-oss-20b work; 8b-instant does not).
+
+### ✅ Phase 4 — hybrid screening + real analytics
+- **Hybrid screening** (`screening_agent.py`): BERT ranks ALL resumes (cheap/local), LLM deep-evaluates only the top-K (`SCREEN_LLM_TOP_K`, default 5). ~64% fewer LLM calls on a 14-resume batch. Candidate cards show 🧠 deep vs ⚡ BERT.
+- **Real analytics** (`/api/analytics` + dashboard): funnel (now incl. Offers/Accepted) + real score distribution + stats (avg/top score, deep vs pre-screened, stage) — replaced the mock "sources".
+- **Ollama** local/offline path already available via `LLM_PROVIDER=ollama` (no extra work).
+
+### ✅ Phase 5 — expand & modernize the Nasiko A2A agent (commit `a5ac5b6`)
+- `hr-ai-agent/` migrated to LangGraph `create_react_agent` (A2A contract unchanged); tools 7 → 9 (added `negotiation_guidance`, `draft_rejection_email`); self-contained `llm_config.py` provider switch; `AgentCard.json` v1.1.0 with 9 skills; Dockerfile on the modern stack; docker-compose passes the free-provider env. **Verified locally on Groq** — the A2A `message/send` call returns a completed task with the tool output.
+
+**Remaining (manual, only you can do it):** deploy `hr-ai-agent/` to Nasiko via the dashboard (Connect GitHub or Upload ZIP) — see `hr-ai-agent/README.md`.
 
 ---
 
