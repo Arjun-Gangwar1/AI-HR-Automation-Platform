@@ -6,3 +6,11 @@ __pycache__/
 *.pyc
 *.log
 *.zip
+
+# OS / editor junk
+__MACOSX/
+.DS_Store
+._*
+.vscode/
+venv/
+.venv/

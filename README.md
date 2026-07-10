@@ -13,10 +13,17 @@ Team - Ozark
 
 
 ## 🧠 Tech Stack
-- Python
-- Flask / FastAPI
-- LLM (OpenAI / Ollama / etc.)
-- NLP + Automation
+- Python 3.12
+- FastAPI (web server + REST API)
+- OpenAI GPT-4o (all generative agents: JD, screening, email, interview, documents, helpdesk)
+- sentence-transformers `all-MiniLM-L6-v2` (BERT embeddings for helpdesk RAG)
+- Google Calendar API (OAuth2) — interview scheduling
+- Gmail SMTP — email sending
+- Telegram Bot API + APScheduler — job posting & auto-relax
+- reportlab — PDF offer letters
+
+> Note: an earlier draft mentioned Groq/Ollama, but the current code uses **OpenAI GPT-4o** everywhere.
+> See `PROJECT_ANALYSIS_AND_MASTER_PLAN.md` for full status and the build roadmap.
 
 ## 📸 Demo
 (Add screenshots here)
@@ -97,11 +104,10 @@ pip install -r requirements.txt
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Copy `hackathon/.env.example` to `hackathon/.env` and fill in real values. Key variables:
 
 ```env
 # API Keys
-GROQ_API_KEY=your_groq_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Google Calendar Settings
@@ -324,8 +330,7 @@ All existing API endpoints remain the same - the integration is seamless!
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GROQ_API_KEY` | Yes | - | Groq API key for AI agents |
-| `OPENAI_API_KEY` | Yes* | - | OpenAI key (for calendar LangGraph agent) |
+| `OPENAI_API_KEY` | Yes | - | OpenAI GPT-4o key — used by all generative agents |
 | `CREDENTIALS_FILE` | Yes | `credentials.json` | Google OAuth credentials |
 | `TOKEN_FILE` | No | `token.json` | OAuth token storage |
 | `CALENDAR_ID` | No | `primary` | Google Calendar ID to use |
@@ -334,7 +339,7 @@ All existing API endpoints remain the same - the integration is seamless!
 | `MODEL_NAME` | No | `gpt-4o` | OpenAI model for calendar agent |
 | `MAX_TOKENS` | No | `4096` | Max tokens for LLM responses |
 
-*Required only if using the LangGraph conversational calendar agent
+`MODEL_NAME` / `MAX_TOKENS` are only used by the optional LangGraph conversational calendar agent (`calendar_service/graph.py`).
 
 ## Contributing
 

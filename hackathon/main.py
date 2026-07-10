@@ -20,7 +20,6 @@ from agents.email_agent import draft_interview_email, send_email, draft_rejectio
 from agents.calendar_agent import schedule_interview, get_all_events, get_events_for_month, add_event, delete_event
 from agents.helpdesk_agent import answer_query, load_knowledge_base
 from agents.onboarding_agent import send_welcome_package
-from agents.onboarding_agent import send_welcome_package
 from agents.interview_agent import generate_interview_questions
 from agents.document_agent import generate_offer_letter, generate_company_handbook
 from utils.pdf_utils import extract_text_from_pdf

@@ -1,34 +1,42 @@
+# ============================================
+# AI HR Automation Platform — dependencies
+# Canonical list; matches what the code actually imports.
+# ============================================
+
 # FastAPI and web server
 fastapi==0.111.0
-uvicorn==0.29.0
+uvicorn[standard]==0.29.0
 python-multipart>=0.0.9
-jinja2>=3.1.4
-httpx>=0.27.0
-aiofiles>=23.2.1
 
-# AI/ML Libraries
+# LLM (OpenAI GPT-4o is used throughout)
 openai>=1.30.0
+
+# Screening + Helpdesk RAG (BERT embeddings)
+sentence-transformers>=2.7.0
+scikit-learn>=1.3.0
 numpy>=1.24.0
 
-# LangChain and OpenAI (for calendar agent)
-openai>=1.30.0
+# LangChain / LangGraph (A2A agent + optional calendar graph)
 langchain>=0.3.0
 langchain-openai>=0.1.0
 langchain-core>=0.3.0
 langgraph>=0.2.0
 
-# Google APIs (Calendar, OAuth)
+# Google Calendar (OAuth + API)
 google-auth>=2.30.0
 google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.1.0
 google-api-python-client>=2.131.0
 
-# PDF Processing
+# PDF processing + document generation
 pymupdf>=1.24.0
+reportlab>=4.0.0
+
+# Job-posting agent (Telegram scheduling + JD URL scraping)
+APScheduler>=3.10.4
+beautifulsoup4>=4.12.0
 
 # Utilities
 python-dotenv>=1.0.1
 requests>=2.31.0
 python-dateutil>=2.8.0
-APScheduler>=3.10.4
-rich>=13.0.0
