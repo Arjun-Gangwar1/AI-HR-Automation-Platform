@@ -20,13 +20,15 @@ let state = {
 
 // ---------- Navigation ----------
 const pagesMeta = {
+  pipeline: { title: 'Pipeline', sub: 'End-to-end recruitment stage tracker (restart-safe)' },
   jd: { title: 'JD Generator', sub: 'Create diverse, high-quality job descriptions via AI' },
   status: { title: 'Job Status', sub: 'Monitor posting activity and auto-relaxation' },
   resumes: { title: 'Resume Screening', sub: 'BERT-powered semantic resume ranking' },
+  offers: { title: 'Offers & Tracking', sub: 'Send offers, track responses, negotiate, and read replies' },
   emails: { title: 'Email Center', sub: 'Draft and send interview invitations' },
   calendar: { title: 'Interview Calendar', sub: 'Schedule and manage interview events' },
   helpdesk: { title: 'HR Helpdesk', sub: 'Company-grade RAG chatbot for employee queries' },
-  onboarding: { title: 'Onboarding', sub: 'Send welcome packages to hired candidates' },
+  onboarding: { title: 'Onboarding', sub: 'Send welcome packages, track documents, schedule intro' },
 };
 
 function showPage(pageId, navEl) {
@@ -39,7 +41,9 @@ function showPage(pageId, navEl) {
   document.getElementById('topbar-sub').textContent = pagesMeta[pageId]?.sub || '';
 
   if (pageId === 'status') loadJobStatus();
-  if (pageId === 'onboarding') populateOnboardingList();
+  if (pageId === 'pipeline') loadPipeline();
+  if (pageId === 'offers') loadOffers();
+  if (pageId === 'onboarding') { populateOnboardingList(); populateOnboardingChecklistCandidates(); }
   if (pageId === 'emails') syncInterviewTimeMin();
   if (pageId === 'calendar') loadCalendar();
   if (pageId === 'analytics') loadAnalytics();
@@ -1144,6 +1148,245 @@ async function sendHelpdeskQuery() {
   }
 
   chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+// ═══════════════════════════════
+//  PHASE 2: PIPELINE STATE MACHINE
+// ═══════════════════════════════
+
+async function loadPipeline() {
+  try {
+    const d = await apiCall('/api/pipeline');
+    renderStepper(d);
+    const hist = d.history || [];
+    document.getElementById('pipeline-history').innerHTML = hist.length
+      ? hist.map(h => `<div style="padding:5px 0">✅ <strong>${h.label}</strong>
+          <span style="color:var(--text-muted)">— ${new Date(h.at).toLocaleString()}</span></div>`).join('')
+      : 'No transitions yet — start by generating a JD.';
+  } catch (e) { /* server may be starting */ }
+}
+
+function renderStepper(d) {
+  const el = document.getElementById('pipeline-stepper');
+  if (!el) return;
+  const cur = d.current_index || 0;
+  el.innerHTML = (d.stages || []).map((s, i) => {
+    const st = i < cur ? 'done' : (i === cur ? 'current' : 'todo');
+    return `<div class="pstep ${st}"><div class="pstep-dot">${i < cur ? '✓' : (i + 1)}</div>
+      <div class="pstep-label">${s.label}</div></div>`;
+  }).join('<div class="pstep-line"></div>');
+}
+
+async function resetPipeline() {
+  if (!confirm('Reset the pipeline to IDLE and clear the current role/session? This cannot be undone.')) return;
+  try {
+    await apiCall('/api/pipeline/reset', 'POST');
+    state.shortlisted = []; state.screened = []; state.currentRole = ''; state.drafts = {};
+    updateSessionPills();
+    loadPipeline();
+    alert('Pipeline reset to IDLE.');
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+function downloadCandidatesCSV() {
+  window.open(API + '/api/export/candidates.csv', '_blank');
+}
+
+async function sendReminders() {
+  try {
+    const d = await apiCall('/api/reminders/send-today', 'POST');
+    alert(d.result || d.message || 'Reminders processed.');
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ═══════════════════════════════
+//  PHASE 2: OFFERS & TRACKING
+// ═══════════════════════════════
+
+function populateOfferCandidates() {
+  const sel = document.getElementById('offer-candidate');
+  if (!sel) return;
+  if (!state.shortlisted.length) {
+    sel.innerHTML = '<option value="">— shortlist candidates first —</option>';
+    return;
+  }
+  sel.innerHTML = state.shortlisted.map(c =>
+    `<option value="${c.candidate_id}" data-name="${c.name}" data-email="${c.email || ''}">${c.name} (${c.email || 'no email'})</option>`
+  ).join('');
+}
+
+async function loadOffers() {
+  populateOfferCandidates();
+  try {
+    const d = await apiCall('/api/offers');
+    renderOffersTable(d.offers || {});
+  } catch (e) { /* ignore */ }
+}
+
+function renderOffersTable(offers) {
+  const el = document.getElementById('offers-table');
+  const keys = Object.keys(offers);
+  if (!keys.length) { el.innerHTML = 'No offers sent yet.'; return; }
+  el.innerHTML = `<div style="overflow-x:auto"><table class="p2-table">
+    <thead><tr><th>Candidate</th><th>Role</th><th>Salary</th><th>Status</th><th>Response</th><th>Actions</th></tr></thead>
+    <tbody>` + keys.map(cid => {
+    const o = offers[cid]; const resp = o.response || 'pending';
+    const badge = resp === 'accepted' ? '#10b981' : resp === 'declined' ? '#ef4444' : '#f59e0b';
+    return `<tr>
+      <td>${o.name || ''}</td><td>${o.role || ''}</td><td>${o.salary || ''}</td>
+      <td>${o.status || ''}</td>
+      <td><span style="color:${badge};font-weight:600;text-transform:capitalize">${resp}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline btn-sm" title="Mark accepted" onclick="setOfferResponse('${cid}','accepted')">✅</button>
+        <button class="btn btn-outline btn-sm" title="Mark declined" onclick="setOfferResponse('${cid}','declined')">❌</button>
+        <button class="btn btn-outline btn-sm" title="Negotiation help" onclick="negotiateOffer('${cid}')">🤝</button>
+      </td></tr>`;
+  }).join('') + `</tbody></table></div>`;
+}
+
+async function sendOffer() {
+  const sel = document.getElementById('offer-candidate');
+  const cid = sel.value;
+  if (!cid) { alert('Select a candidate (shortlist someone first).'); return; }
+  const opt = sel.selectedOptions[0];
+  setLoading('btn-send-offer', true, 'Sending…');
+  try {
+    const d = await apiCall('/api/offer/send', 'POST', {
+      candidate_id: cid,
+      candidate_email: opt.dataset.email,
+      role: state.currentRole || '',
+      salary: document.getElementById('offer-salary').value.trim() || '$120,000',
+      equity: document.getElementById('offer-equity').value.trim() || 'Standard equity package',
+      start_date: document.getElementById('offer-startdate').value || '',
+    });
+    showAlert('alert-offer', d.email_sent ? 'success' : 'warning',
+      d.email_sent ? `Offer sent to ${opt.dataset.name}.`
+                   : `Offer recorded, but email not sent (${d.email_error || 'no email / Gmail not configured'}).`);
+    loadOffers(); loadPipeline();
+  } catch (e) {
+    showAlert('alert-offer', 'error', 'Error: ' + e.message);
+  } finally {
+    setLoading('btn-send-offer', false, '📤 Generate & Send Offer');
+  }
+}
+
+async function setOfferResponse(cid, resp) {
+  try {
+    const d = await apiCall('/api/offer/response', 'POST', { candidate_id: cid, response: resp });
+    loadOffers();
+    alert(d.next_step || ('Marked ' + resp));
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function negotiateOffer(cid) {
+  const el = document.getElementById('negotiation-content');
+  el.innerHTML = '<div style="padding:20px;text-align:center"><span class="spinner"></span> Generating guidance…</div>';
+  document.getElementById('negotiation-modal').style.display = 'flex';
+  try {
+    const d = await apiCall('/api/offer/negotiate', 'POST', { candidate_id: cid });
+    const g = d.guidance || {};
+    el.innerHTML = `
+      <div style="margin-bottom:14px"><strong>Likely reasons</strong>
+        <ul>${(g.likely_reasons || []).map(r => `<li>${r}</li>`).join('')}</ul></div>
+      <div style="margin-bottom:14px"><strong>Recommended counter</strong><br>${g.recommended_counter || '—'}</div>
+      <div style="margin-bottom:14px"><strong>Non-salary levers</strong>
+        <ul>${(g.non_salary_levers || []).map(r => `<li>${r}</li>`).join('')}</ul></div>
+      <div style="margin-bottom:14px"><strong>Walk-away advice</strong><br>${g.walk_away_advice || '—'}</div>
+      <div><strong>Draft response email</strong>
+        <pre style="white-space:pre-wrap;background:var(--surface2);padding:12px;border-radius:8px;margin-top:6px">${g.response_email || '—'}</pre></div>`;
+  } catch (e) {
+    el.innerHTML = '<div style="color:#ef4444">Error: ' + e.message + '</div>';
+  }
+}
+
+function closeNegotiation() {
+  document.getElementById('negotiation-modal').style.display = 'none';
+}
+
+async function checkInbox() {
+  setLoading('btn-check-inbox', true, 'Checking…');
+  const el = document.getElementById('inbox-results');
+  try {
+    const d = await apiCall('/api/inbox/check', 'POST', { days_back: 7 });
+    if (d.status !== 'ok') {
+      el.innerHTML = `<div style="color:var(--warning)">${d.message || d.status}</div>`;
+      return;
+    }
+    const reps = d.replies || [];
+    el.innerHTML = reps.length ? reps.map(r => {
+      const c = r.intent === 'confirmed' ? '#10b981' : r.intent === 'declined' ? '#ef4444'
+        : r.intent === 'reschedule' ? '#f59e0b' : '#6366f1';
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <strong>${r.name || r.email}</strong>
+        <span style="color:${c};font-weight:600;text-transform:capitalize">[${r.intent}]</span><br>
+        <span style="color:var(--text-dim)">${r.summary || ''}</span><br>
+        <small style="color:var(--text-muted)">→ ${r.suggested_action || ''}</small></div>`;
+    }).join('') : `Scanned ${d.scanned_candidates} candidate(s) — no replies found in the last 7 days.`;
+    loadOffers();
+  } catch (e) {
+    el.innerHTML = '<div style="color:#ef4444">Error: ' + e.message + '</div>';
+  } finally {
+    setLoading('btn-check-inbox', false, '🔍 Check Replies');
+  }
+}
+
+// ═══════════════════════════════
+//  PHASE 2: ONBOARDING CHECKLIST + INTRO MEETING
+// ═══════════════════════════════
+
+function populateOnboardingChecklistCandidates() {
+  const sel = document.getElementById('onboard-checklist-candidate');
+  if (!sel) return;
+  if (!state.shortlisted.length) {
+    sel.innerHTML = '<option value="">— shortlist candidates first —</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">— select candidate —</option>' +
+    state.shortlisted.map(c => `<option value="${c.candidate_id}">${c.name}</option>`).join('');
+}
+
+async function loadOnboardingChecklist() {
+  const cid = document.getElementById('onboard-checklist-candidate').value;
+  const el = document.getElementById('onboarding-checklist');
+  document.getElementById('intro-meeting-status').textContent = '';
+  if (!cid) { el.innerHTML = 'Select a shortlisted candidate to view their onboarding document checklist.'; return; }
+  try {
+    const d = await apiCall('/api/onboarding/checklist?candidate_id=' + encodeURIComponent(cid));
+    el.innerHTML = `<div style="margin-bottom:10px">Progress: <strong>${d.received_count}/${d.total}</strong>${d.complete ? ' ✅ complete' : ''}</div>` +
+      d.items.map(it => `<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer">
+        <input type="checkbox" ${it.received ? 'checked' : ''} data-doc="${it.name.replace(/"/g, '&quot;')}"
+          onchange="toggleOnboardingDoc('${cid}', this.getAttribute('data-doc'), this.checked)"/>
+        <span>${it.name}</span></label>`).join('');
+    if (d.intro_meeting) {
+      document.getElementById('intro-meeting-status').textContent =
+        'Intro meeting: ' + (d.intro_meeting.message || d.intro_meeting.title || 'scheduled');
+    }
+  } catch (e) {
+    el.innerHTML = '<span style="color:#ef4444">Error: ' + e.message + '</span>';
+  }
+}
+
+async function toggleOnboardingDoc(cid, doc, received) {
+  try {
+    await apiCall('/api/onboarding/document-received', 'POST',
+      { candidate_id: cid, document: doc, received: received });
+    loadOnboardingChecklist();
+    loadPipeline();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function scheduleIntroMeeting() {
+  const cid = document.getElementById('onboard-checklist-candidate').value;
+  if (!cid) { alert('Select a candidate first.'); return; }
+  const statusEl = document.getElementById('intro-meeting-status');
+  statusEl.textContent = 'Scheduling…';
+  try {
+    const d = await apiCall('/api/onboarding/schedule-intro', 'POST', { candidate_id: cid });
+    statusEl.textContent = d.message || d.status || 'Intro meeting scheduled.';
+    loadPipeline();
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
 }
 
 // ---------- Init ----------

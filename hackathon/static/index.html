@@ -23,6 +23,10 @@
       <p>Intelligent Hiring Platform</p>
     </div>
     <div class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item" data-page="pipeline" onclick="showPage('pipeline',this)">
+        <span class="icon">🗺️</span> Pipeline
+      </div>
       <div class="nav-section-label">Recruitment</div>
       <div class="nav-item active" data-page="jd" onclick="showPage('jd',this)">
         <span class="icon">🧠</span> JD Generator
@@ -34,6 +38,9 @@
       <div class="nav-item" data-page="resumes" onclick="showPage('resumes',this)">
         <span class="icon">📄</span> Resume Screening
         <span class="nav-badge" id="badge-resumes">0</span>
+      </div>
+      <div class="nav-item" data-page="offers" onclick="showPage('offers',this)">
+        <span class="icon">💼</span> Offers &amp; Tracking
       </div>
       <div class="nav-section-label">Communication</div>
       <div class="nav-item" data-page="emails" onclick="showPage('emails',this)">
@@ -574,6 +581,104 @@
             🎁 Send Welcome Package
           </button>
           <div id="alert-onboard" class="alert" style="margin-top:16px"></div>
+        </div>
+
+        <div class="card" id="onboarding-checklist-card">
+          <div class="card-header">
+            <div class="card-title">📋 Document Checklist &amp; Intro Meeting</div>
+            <select id="onboard-checklist-candidate" onchange="loadOnboardingChecklist()"
+              style="max-width:240px"></select>
+          </div>
+          <div id="onboarding-checklist" style="font-size:0.85rem;color:var(--text-muted)">Select a shortlisted
+            candidate to view their onboarding document checklist.</div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="scheduleIntroMeeting()">📅 Schedule Intro Meeting
+              (auto-slot)</button>
+            <span id="intro-meeting-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: PIPELINE ═══ -->
+      <div id="page-pipeline" class="page" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🗺️ Recruitment Pipeline</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-outline btn-sm" onclick="loadPipeline()">🔄 Refresh</button>
+              <button class="btn btn-outline btn-sm" onclick="downloadCandidatesCSV()">⬇️ Export CSV</button>
+              <button class="btn btn-outline btn-sm" onclick="sendReminders()">⏰ Send Today's Reminders</button>
+              <button class="btn btn-outline btn-sm" style="border-color:#ef4444;color:#ef4444" onclick="resetPipeline()">↺
+                Reset</button>
+            </div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px">Live, restart-safe stage tracker
+            (SQLite-backed). Each step advances automatically as you move through the workflow.</div>
+          <div id="pipeline-stepper" class="pipeline-stepper"></div>
+          <div class="divider"></div>
+          <div class="card-title" style="margin-bottom:12px">📜 Stage History</div>
+          <div id="pipeline-history" style="font-size:0.85rem;color:var(--text-muted)">No transitions yet.</div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: OFFERS & TRACKING ═══ -->
+      <div id="page-offers" class="page" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💼 Send Offer</div>
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label class="form-label">Candidate (from shortlist)</label>
+              <select id="offer-candidate"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Base Salary</label>
+              <input type="text" id="offer-salary" placeholder="$120,000" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label class="form-label">Equity / Bonus</label>
+              <input type="text" id="offer-equity" placeholder="8,000 RSUs" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Start Date</label>
+              <input type="date" id="offer-startdate" />
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-send-offer" onclick="sendOffer()">📤 Generate &amp; Send Offer</button>
+          <div id="alert-offer" class="alert" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Tracked Offers</div>
+            <button class="btn btn-outline btn-sm" onclick="loadOffers()">🔄 Refresh</button>
+          </div>
+          <div id="offers-table" style="font-size:0.85rem;color:var(--text-muted)">No offers sent yet.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📨 Inbox — Candidate Replies</div>
+            <button class="btn btn-outline btn-sm" id="btn-check-inbox" onclick="checkInbox()">🔍 Check Replies</button>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:10px">Scans the HR inbox (IMAP) for replies
+            from shortlisted candidates and classifies each with AI (confirmed / declined / reschedule / question).</div>
+          <div id="inbox-results" style="font-size:0.85rem;color:var(--text-muted)">No replies scanned yet.</div>
+        </div>
+
+        <!-- Negotiation modal -->
+        <div id="negotiation-modal" class="modal-overlay" style="display:none"
+          onclick="if(event.target===this)closeNegotiation()">
+          <div class="modal">
+            <div class="modal-header">
+              <h3>🤝 Negotiation Guidance</h3>
+              <button class="btn btn-outline btn-sm" onclick="closeNegotiation()">✕</button>
+            </div>
+            <div class="modal-body" id="negotiation-content"></div>
+          </div>
         </div>
       </div>
 
