@@ -9,7 +9,7 @@
         "url": "https://github.com/hackathon99/hr-ai-agent"
     },
     "iconUrl": "http://localhost:5000/icon.png",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "documentationUrl": "http://localhost:5000/docs",
     "capabilities": {
         "streaming": false,
@@ -49,6 +49,14 @@
         {
             "name": "draft_interview_email",
             "description": "Draft professional interview invitation emails for candidates"
+        },
+        {
+            "name": "negotiation_guidance",
+            "description": "Advise HR on counter-offers, non-salary levers, and a reply when a candidate negotiates or declines an offer"
+        },
+        {
+            "name": "draft_rejection_email",
+            "description": "Draft a polite, constructive rejection email for a candidate who was not selected"
         }
     ],
     "supportsAuthenticatedExtendedCard": false,

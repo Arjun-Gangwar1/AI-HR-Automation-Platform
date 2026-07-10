@@ -7,11 +7,11 @@ import json
 import random
 from typing import List, Dict, Any
 from langchain_core.tools import tool
-from openai import OpenAI
 
-# Initialize OpenAI client (reads OPENAI_API_KEY from env)
-_client = OpenAI()
-_MODEL = "gpt-4o"
+# Provider-swappable client (OpenAI by default; Groq/Ollama/etc. via LLM_PROVIDER).
+from llm_config import get_client, MODEL as _MODEL
+
+_client = get_client()
 
 
 def _chat(system: str, user: str, temperature: float = 0.7, max_tokens: int = 2000) -> str:
@@ -285,3 +285,63 @@ def draft_interview_email(
 Include: greeting, interview details, what to prepare, and sign-off from the HR team."""
 
     return _chat(system_prompt, user_prompt, temperature=0.5, max_tokens=800)
+
+
+# ═══════════════════════════════════════════════
+# 8. NEGOTIATION HELPER
+# ═══════════════════════════════════════════════
+@tool
+def negotiation_guidance(
+    candidate_name: str,
+    role: str,
+    offered_salary: str,
+    candidate_reason: str = ""
+) -> str:
+    """
+    Advise HR on a compensation negotiation when a candidate declines or asks for more.
+    Returns likely reasons, a recommended counter, non-salary levers, and a draft reply.
+
+    Args:
+        candidate_name: the candidate's name
+        role: the role offered
+        offered_salary: what was offered, e.g. '$120,000'
+        candidate_reason: the candidate's stated reason, if known
+    """
+    system_prompt = "You are a seasoned Head of Talent advising an HR manager on a compensation negotiation."
+    user_prompt = f"""A candidate is pushing back on an offer.
+- Candidate: {candidate_name}
+- Role: {role}
+- Offered salary: {offered_salary}
+- Stated reason: {candidate_reason or 'not provided'}
+
+Provide, in clear sections:
+1. Likely reasons for the pushback
+2. A specific recommended counter-offer or range
+3. Non-salary levers (signing bonus, equity, remote flexibility, learning budget, etc.)
+4. When to walk away vs keep negotiating
+5. A short, warm draft email HR can send to re-open the conversation"""
+    return _chat(system_prompt, user_prompt, temperature=0.5, max_tokens=1000)
+
+
+# ═══════════════════════════════════════════════
+# 9. REJECTION EMAIL
+# ═══════════════════════════════════════════════
+@tool
+def draft_rejection_email(candidate_name: str, role: str, gap: str = "") -> str:
+    """
+    Draft a polite, constructive rejection email for a candidate who was not selected.
+
+    Args:
+        candidate_name: the candidate's name
+        role: the role they applied for
+        gap: optional note on the main gap vs requirements (kept gentle in the email)
+    """
+    system_prompt = "You are a professional, empathetic HR recruiter who writes kind, constructive rejection emails."
+    user_prompt = f"""Write a rejection email:
+- Candidate: {candidate_name}
+- Role: {role}
+- Main gap (mention gently, if provided): {gap or 'not specified'}
+
+Thank them, clearly but kindly say they weren't selected, give one constructive
+note, wish them luck, and sign off from the HR team. Plain text, no subject line."""
+    return _chat(system_prompt, user_prompt, temperature=0.6, max_tokens=600)

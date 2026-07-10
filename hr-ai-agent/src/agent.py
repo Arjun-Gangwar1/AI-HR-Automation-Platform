@@ -1,13 +1,14 @@
 """
 Core agent logic for HR AI Agent — Nasiko A2A deployment.
-Uses LangChain with GPT-4o and 7 specialized HR tools.
+
+A LangGraph tool-calling agent (create_react_agent) with 9 specialized HR tools.
+The LLM backend is swappable via LLM_PROVIDER (OpenAI by default; free Groq etc.).
+
+The A2A contract is unchanged: Agent().process_message(text) -> str.
 """
-from typing import List, Dict, Any
+from langgraph.prebuilt import create_react_agent
 
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-
+from llm_config import get_langchain_llm, PROVIDER, MODEL
 from tools import (
     generate_job_description,
     screen_resume,
@@ -16,14 +17,32 @@ from tools import (
     generate_company_handbook,
     answer_hr_query,
     draft_interview_email,
+    negotiation_guidance,
+    draft_rejection_email,
 )
+
+SYSTEM_PROMPT = """You are an expert HR AI Agent — an intelligent hiring platform that helps \
+recruiters and HR teams with the full recruitment lifecycle.
+
+Your capabilities (use the matching tool when asked):
+1. JD Generator — compelling, customized Job Descriptions in various styles
+2. Resume Screener — evaluate/score a resume against a job description
+3. Interview Kit — 10 tailored interview questions with rationales
+4. Offer Letter Generator — professional offer letters
+5. Company Handbook — comprehensive employee handbooks
+6. HR Helpdesk — policy questions (PTO, benefits, remote work, etc.)
+7. Email Drafter — interview invitation emails
+8. Negotiation Advisor — counter-offer guidance when a candidate pushes back
+9. Rejection Email — polite, constructive rejection emails
+
+Be professional, helpful, and proactive. If a request is ambiguous, ask a brief \
+clarifying question. Format responses cleanly with headers and bullet points when useful."""
 
 
 class Agent:
     def __init__(self):
         self.name = "HR AI Agent"
 
-        # Register all HR tools
         self.tools = [
             generate_job_description,
             screen_resume,
@@ -32,42 +51,17 @@ class Agent:
             generate_company_handbook,
             answer_hr_query,
             draft_interview_email,
+            negotiation_guidance,
+            draft_rejection_email,
         ]
 
-        # Configure the LLM
-        self.llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
-
-        # Define the agent's personality and instructions
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert HR AI Agent — an intelligent hiring platform that helps recruiters and HR teams with the full recruitment lifecycle.
-
-Your capabilities include:
-1. **JD Generator** — Create compelling, customized Job Descriptions in various styles (Corporate, Startup, Technical, etc.)
-2. **Resume Screener** — Evaluate resumes against a job description and provide structured scoring
-3. **Interview Kit** — Generate 10 tailored interview questions with rationales and expected answers
-4. **Offer Letter Generator** — Draft FAANG-grade, professional offer letters
-5. **Company Handbook** — Create comprehensive employee handbooks
-6. **HR Helpdesk** — Answer policy questions about PTO, benefits, remote work, etc.
-7. **Email Drafter** — Draft professional interview invitation emails
-
-Always be professional, helpful, and proactive. When a user asks for something, use the appropriate tool.
-If the user's request is ambiguous, ask clarifying questions before proceeding.
-Format your responses cleanly with headers and bullet points when appropriate."""),
-            ("user", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ])
-
-        # Create the LangChain agent
-        agent = create_tool_calling_agent(self.llm, self.tools, prompt)
-        self.agent_executor = AgentExecutor(
-            agent=agent,
-            tools=self.tools,
-            verbose=True,
-            max_iterations=5,
-            handle_parsing_errors=True,
-        )
+        # Provider-swappable LLM (OpenAI default; Groq/Ollama/etc. via LLM_PROVIDER).
+        self.llm = get_langchain_llm(temperature=0.2)
+        self.agent = create_react_agent(self.llm, self.tools, prompt=SYSTEM_PROMPT)
+        print(f"[HR-AI-Agent] LLM provider='{PROVIDER}', model='{MODEL}', tools={len(self.tools)}")
 
     def process_message(self, message_text: str) -> str:
-        """Process incoming messages via the LangChain agent."""
-        result = self.agent_executor.invoke({"input": message_text})
-        return result["output"]
+        """Process one incoming A2A message and return the agent's reply text."""
+        result = self.agent.invoke({"messages": [("user", message_text)]})
+        messages = result.get("messages", [])
+        return messages[-1].content if messages else ""

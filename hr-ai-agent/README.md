@@ -13,6 +13,8 @@ An intelligent HR hiring platform agent that handles the full recruitment lifecy
 | 5 | **Company Handbook** | Create comprehensive employee handbooks |
 | 6 | **HR Helpdesk** | Answer HR policy questions (PTO, benefits, etc.) |
 | 7 | **Email Drafter** | Draft interview invitation emails |
+| 8 | **Negotiation Advisor** | Counter-offer guidance when a candidate pushes back |
+| 9 | **Rejection Email** | Draft polite, constructive rejection emails |
 
 ## 📦 Project Structure
 
@@ -22,8 +24,9 @@ hr-ai-agent/
 │   ├── __init__.py
 │   ├── __main__.py      # A2A JSON-RPC server (port 5000)
 │   ├── models.py        # Pydantic models for A2A protocol
-│   ├── agent.py         # LangChain Agent with GPT-4o
-│   └── tools.py         # 7 LangChain @tool functions
+│   ├── agent.py         # LangGraph tool-calling agent (create_react_agent)
+│   ├── tools.py         # 9 LangChain @tool functions
+│   └── llm_config.py    # Swappable LLM provider (OpenAI / Groq / Ollama / ...)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── AgentCard.json
@@ -34,14 +37,24 @@ hr-ai-agent/
 
 ### Prerequisites
 - Docker Desktop installed
-- OpenAI API Key
+- An LLM key: OpenAI (default) **or** a free Groq key (`LLM_PROVIDER=groq`)
 
-### Build & Run
+### Build & Run (OpenAI)
 
 ```bash
 cd hr-ai-agent
 docker build -t hr-ai-agent .
 docker run -p 5000:5000 -e OPENAI_API_KEY=your_key_here hr-ai-agent
+```
+
+### Run for free on Groq
+
+```bash
+docker run -p 5000:5000 \
+  -e LLM_PROVIDER=groq \
+  -e LLM_MODEL=llama-3.3-70b-versatile \
+  -e GROQ_API_KEY=your_groq_key \
+  hr-ai-agent
 ```
 
 ### Test with curl
@@ -78,4 +91,11 @@ curl -X POST http://localhost:5000/ \
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENAI_API_KEY` | ✅ | Your OpenAI API key for GPT-4o |
+| `LLM_PROVIDER` | — | `openai` (default), `groq`, `ollama`, `gemini`, or `openrouter` |
+| `LLM_MODEL` | — | Override the provider's default model |
+| `OPENAI_API_KEY` | ✅ if provider=openai | OpenAI key (Nasiko provides this) |
+| `GROQ_API_KEY` | ✅ if provider=groq | Free Groq key from console.groq.com |
+
+> The agent defaults to OpenAI (what Nasiko injects). Set `LLM_PROVIDER=groq` to run free.
+> Verified locally on Groq `openai/gpt-oss-20b` — the A2A `message/send` call returns a
+> completed task with the tool's output.
