@@ -1,11 +1,86 @@
 """
-Onboarding Agent - Send welcome packages to hired candidates
+Onboarding Agent - Send welcome packages to hired candidates,
+track new-hire document collection, and schedule the intro meeting.
 """
 import os
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from agents.email_agent import send_onboarding_email
+
+
+# Documents a new hire must submit before / during onboarding.
+REQUIRED_DOCUMENTS = [
+    "Signed offer letter",
+    "Government photo ID (passport / driver's license)",
+    "Proof of address",
+    "Educational certificates",
+    "Previous employment / relieving letter",
+    "Bank account details (for payroll)",
+    "Tax forms (PAN / SSN / equivalent)",
+    "Emergency contact form",
+]
+
+
+def get_document_checklist(collected: list[str] | None = None) -> dict:
+    """
+    Return the onboarding document checklist with per-item status.
+
+    Args:
+        collected: list of document names already received for this candidate.
+
+    Returns:
+        dict with the item list (each {name, received}) and progress counts.
+    """
+    collected_set = {d.strip().lower() for d in (collected or [])}
+    items = [
+        {"name": doc, "received": doc.strip().lower() in collected_set}
+        for doc in REQUIRED_DOCUMENTS
+    ]
+    received = sum(1 for i in items if i["received"])
+    return {
+        "items": items,
+        "received_count": received,
+        "total": len(items),
+        "complete": received == len(items),
+    }
+
+
+def schedule_intro_meeting(
+    candidate: dict,
+    role: str,
+    datetime_str: str = "",
+    duration_minutes: int = 30,
+) -> dict:
+    """
+    Schedule a new-hire intro / orientation meeting on Google Calendar.
+
+    If `datetime_str` is empty, the smart scheduler finds the next free slot.
+    Reuses the calendar agent so the invite + reminders behave like interviews.
+    """
+    from agents.calendar_agent import add_event, schedule_interview
+
+    name = candidate.get("name", "New Hire")
+    emailaddr = candidate.get("email", "")
+
+    if datetime_str and "T" in datetime_str:
+        return add_event(
+            title=f"Welcome & Intro Meeting — {name} ({role})",
+            datetime_str=datetime_str,
+            event_type="followup",
+            candidate_name=name,
+            candidate_email=emailaddr,
+            notes=f"Onboarding intro meeting for {name}, new {role}. "
+                  f"Agenda: team intros, tooling setup, first-week plan.",
+            duration_minutes=duration_minutes,
+        )
+    # No specific time → let the smart scheduler pick the next available slot.
+    return schedule_interview(
+        candidate=candidate,
+        datetime_str="",
+        role=f"Onboarding Intro — {role}",
+        duration_minutes=duration_minutes,
+    )
 
 
 def send_welcome_package(candidate: dict, role: str) -> dict:

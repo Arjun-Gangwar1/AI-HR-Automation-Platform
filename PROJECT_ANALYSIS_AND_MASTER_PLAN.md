@@ -130,6 +130,9 @@ The 6 notebook pages in `doc/` lay out the complete vision. Mapping to actual co
 
 Sequenced "make it real" before "make it fancy."
 
+> **Progress:** ✅ Phase 0 done (committed) · ✅ Phase 1 done · ✅ Phase 2 done · ⬜ Phases 3–5 remaining.
+> See the "Build Progress Log" at the bottom for details.
+
 ### Phase 0 — Hygiene (½ day)
 - Delete `AI-HR-Automation-Platform/`, `HR-automation-system-/`, all `__MACOSX/`, `.DS_Store`, nested `hackathon/hackathon/`.
 - Make `requirements_complete.txt` the real `requirements.txt`.
@@ -179,6 +182,32 @@ Sequenced "make it real" before "make it fancy."
 1. **Clean the repo** (Phase 0) — mostly `rm -rf` of duplicate trees + fixing `requirements.txt`.
 2. **Create `.env` + get it running** to see the current state end-to-end.
 3. **Add SQLite persistence + the state machine** — the single highest-leverage upgrade; directly fulfills notebook page 3.
+
+---
+
+---
+
+## Build Progress Log
+
+### ✅ Phase 0 — Hygiene (committed, `4186118`)
+- Deleted duplicate repo trees (`AI-HR-Automation-Platform/`, `HR-automation-system-/`), `__MACOSX/`, `.DS_Store`, nested `hackathon/hackathon/`.
+- Fixed `requirements.txt` (added the missing `sentence-transformers`, `scikit-learn`, `reportlab`, `beautifulsoup4`); removed redundant requirements files.
+- Added `hackathon/.env.example` (all env vars documented); fixed the double import in `main.py`; corrected the README (OpenAI, not Groq/Ollama); hardened `.gitignore`.
+
+### ✅ Phase 1 — Persistence + state machine
+- New `hackathon/store.py` — stdlib `sqlite3` (no ORM, no new deps). Persists the whole session to `data/hr_state.db`; **forward-only** pipeline state machine (`IDLE→JD_DRAFTED→POSTED→COLLECTING→SCREENED→SHORTLISTED→INTERVIEWING→OFFER→ONBOARDING`); job persistence; stage-history audit.
+- `main.py` wired additively: `persist(stage=...)` in every mutating endpoint; session + `active_jobs` restored on startup. New endpoints `GET /api/pipeline`, `POST /api/pipeline/reset`; `/api/session` returns `current_stage`.
+
+### ✅ Phase 2 — Close the notebook loop
+- **Inbound tracking:** `agents/inbox_agent.py` (IMAP read via app password, LLM classifies replies confirmed/declined/reschedule/question) → `POST /api/inbox/check`, auto-updates offer status.
+- **Auto reminders:** `agents/reminder_agent.py` (APScheduler daily job at `REMINDER_HOUR`, wraps existing `send_reminders_for_today`) → `POST /api/reminders/send-today`.
+- **Offer → track → branch:** `agents/negotiation_agent.py` + offer tracking in the session → `POST /api/offer/send`, `GET /api/offers`, `POST /api/offer/response`, `POST /api/offer/negotiate`.
+- **Onboarding:** document-collection checklist + intro-meeting scheduling in `agents/onboarding_agent.py` → `GET /api/onboarding/checklist`, `POST /api/onboarding/document-received`, `POST /api/onboarding/schedule-intro`.
+- **Spreadsheet sync:** `GET /api/export/candidates.csv`.
+- Also closed the Phase 1 gap: `posting_agent.reschedule_pending_relaxations()` re-arms auto-relax timers on restart.
+- **Verification:** all files AST-parse; pure logic (checklist, store round-trip, CSV export) passes an isolated functional test. LLM/IMAP/calendar paths follow existing patterns but need a live run (deps + `.env`) to confirm end-to-end.
+
+**Remaining:** Phase 3 (LangGraph supervisor + LangSmith), Phase 4 (hybrid BERT+LLM screening, Ollama option, analytics), Phase 5 (ship expanded tools to Nasiko). Frontend UI for the new Phase 2 endpoints is not yet wired.
 
 ---
 

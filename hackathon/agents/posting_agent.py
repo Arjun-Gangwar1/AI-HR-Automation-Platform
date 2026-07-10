@@ -194,6 +194,35 @@ def check_and_relax(job_id: str):
         print(f"[Relaxation] Sufficient applications — no relaxation needed.")
 
 
+def reschedule_pending_relaxations():
+    """
+    After a restart, re-arm the auto-relaxation check for every active job.
+    APScheduler's in-memory jobs don't survive a restart, so jobs restored from
+    SQLite would otherwise never be re-checked. We schedule the next check at
+    posted_at + interval, or shortly from now if that time has already passed.
+    """
+    now = datetime.now()
+    rescheduled = 0
+    for job_id, job in active_jobs.items():
+        if job.get("status") != "active":
+            continue
+        try:
+            posted_at = datetime.fromisoformat(job.get("posted_at", now.isoformat()))
+        except (ValueError, TypeError):
+            posted_at = now
+        run_time = posted_at + timedelta(hours=RELAXATION_INTERVAL_HOURS)
+        if run_time <= now:
+            run_time = now + timedelta(minutes=5)  # overdue → check soon
+        scheduler.add_job(
+            check_and_relax, 'date', run_date=run_time,
+            args=[job_id], id=f"relax_{job_id}", replace_existing=True,
+        )
+        rescheduled += 1
+    if rescheduled:
+        print(f"[Posting] Re-armed relaxation checks for {rescheduled} restored job(s).")
+    return rescheduled
+
+
 def increment_application_count(job_id: str):
     if job_id in active_jobs:
         active_jobs[job_id]["application_count"] += 1

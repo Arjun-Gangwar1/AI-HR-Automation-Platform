@@ -205,6 +205,24 @@ Access the dashboard at: `http://localhost:8000`
 - `POST /api/onboarding/send` - Send onboarding package
 - `POST /api/interview/questions` - Generate interview questions
 
+### Pipeline State (Phase 1 — SQLite-backed)
+
+- `GET  /api/pipeline` - Current pipeline stage + full stage list + history
+- `POST /api/pipeline/reset` - Clear the session and start a fresh role
+
+### Phase 2 — Tracking, reminders, offers, onboarding
+
+- `POST /api/inbox/check` - Scan HR inbox (IMAP), classify candidate replies (confirmed/declined/reschedule/question), auto-update offer status
+- `POST /api/reminders/send-today` - Manually send day-of interview reminders (also runs daily at `REMINDER_HOUR`)
+- `POST /api/offer/send` - Generate + email an offer letter and start tracking it
+- `GET  /api/offers` - List all tracked offers + responses
+- `POST /api/offer/response` - Record accepted / declined
+- `POST /api/offer/negotiate` - Get HR negotiation guidance when a candidate pushes back
+- `GET  /api/onboarding/checklist?candidate_id=` - New-hire document checklist + status
+- `POST /api/onboarding/document-received` - Mark a document received
+- `POST /api/onboarding/schedule-intro` - Schedule the intro / orientation meeting
+- `GET  /api/export/candidates.csv` - Export the pipeline (candidates + statuses) as CSV
+
 ## Calendar Features
 
 ### Smart Interview Scheduling
