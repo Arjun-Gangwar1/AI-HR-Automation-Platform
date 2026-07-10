@@ -3,11 +3,11 @@ Interview Agent - Generates personalized interview questions
 """
 import os
 import json
-from openai import OpenAI
+from llm import get_client, MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 def generate_interview_questions(jd: str, candidate_summary: str, candidate_skills: list, candidate_projects: list) -> list:
     """Generate exactly 10 tailored interview questions based on JD and Resume in JSON format."""
@@ -45,7 +45,7 @@ Output EXACTLY 10 questions in this strictly valid JSON format, with NO markdown
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a professional HR assistant that outputs valid JSON ONLY."},
                 {"role": "user", "content": prompt}

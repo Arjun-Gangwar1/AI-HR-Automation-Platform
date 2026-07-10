@@ -3,12 +3,12 @@ Helpdesk Agent - RAG-powered HR chatbot for candidate queries
 Uses BERT embeddings over company FAQ + Groq LLM for grounded answers
 """
 import os
-from openai import OpenAI
+from llm import get_client, MODEL
 from utils.bert_utils import get_embedding, compute_similarity
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 FAQ_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "company_faq.txt")
 
@@ -88,7 +88,7 @@ Follow your instructions about handling unknown questions."""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": HELPDESK_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}

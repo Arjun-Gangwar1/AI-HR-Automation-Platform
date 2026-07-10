@@ -9,11 +9,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from openai import OpenAI
+from llm import get_client, MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
@@ -40,7 +40,7 @@ Return only the email body (no subject line), using plain text."""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a professional HR coordinator."},
                 {"role": "user", "content": prompt}
@@ -72,7 +72,7 @@ Return only the email body in plain text."""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a warm and professional HR manager."},
                 {"role": "user", "content": prompt}
@@ -104,7 +104,7 @@ Return only the email body in plain text."""
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a professional, empathetic HR recruiter."},
                 {"role": "user", "content": prompt}

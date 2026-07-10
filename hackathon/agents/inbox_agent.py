@@ -26,11 +26,11 @@ import imaplib
 import json
 from email.header import decode_header
 from datetime import datetime, timedelta
-from openai import OpenAI
+from llm import get_client, MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
@@ -91,7 +91,7 @@ Intent meaning:
 - other: anything else"""
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You classify candidate email replies and output ONLY valid JSON."},
                 {"role": "user", "content": prompt},

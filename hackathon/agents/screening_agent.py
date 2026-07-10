@@ -4,12 +4,12 @@ Screening Agent - LLM-based resume screening and candidate ranking
 import os
 import json
 import uuid
-from openai import OpenAI
+from llm import get_client, MODEL
 from utils.bert_utils import get_embedding, compute_similarity
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 MAX_SHORTLIST = int(os.getenv("MAX_SHORTLIST", 5))
 
 
@@ -46,7 +46,7 @@ Return your analysis in the following strict JSON format, and NOTHING ELSE. Do n
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a professional HR evaluation system that outputs ONLY valid JSON."},
                 {"role": "user", "content": prompt}

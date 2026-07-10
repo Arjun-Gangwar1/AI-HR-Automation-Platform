@@ -8,11 +8,11 @@ It never auto-sends anything — it's an advisory tool for the human.
 """
 import os
 import json
-from openai import OpenAI
+from llm import get_client, MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 
 def negotiation_guidance(
@@ -58,7 +58,7 @@ Give practical, specific guidance. Return ONLY valid JSON (no markdown) shaped e
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are an expert compensation negotiator. Output ONLY valid JSON."},
                 {"role": "user", "content": prompt},

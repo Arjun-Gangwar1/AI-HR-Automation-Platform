@@ -1,9 +1,9 @@
 import os
-from openai import OpenAI
+from llm import get_client, MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 def generate_offer_letter(candidate_name: str, role: str, salary: str, equity: str, start_date: str) -> str:
     """Generate a FAANG-grade offer letter in HTML format."""
@@ -29,7 +29,7 @@ Do not include ```html or any markdown blocks. Output only the raw HTML.
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a professional HR assistant that outputs valid HTML ONLY."},
                 {"role": "user", "content": prompt}
@@ -70,7 +70,7 @@ Do not include ```html or any markdown blocks. Output only the raw HTML.
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are a professional HR assistant that outputs valid HTML ONLY."},
                 {"role": "user", "content": prompt}

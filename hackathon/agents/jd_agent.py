@@ -6,11 +6,11 @@ import os
 import random
 import requests
 from bs4 import BeautifulSoup
-from openai import OpenAI
+from llm import get_client, MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = get_client()
 
 # ---------- JD Styles ----------
 JD_STYLES = {
@@ -138,7 +138,7 @@ def generate_jd(prefs: dict) -> str:
     system_prompt, user_prompt = _build_prompt(prefs)
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -172,7 +172,7 @@ Original JD:
 Return only the updated JD, no explanation needed."""
 
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": "You are an expert HR recruiter."},
                 {"role": "user", "content": prompt}
