@@ -884,24 +884,51 @@ async def api_pipeline_reset():
 @app.get("/api/analytics")
 async def api_analytics():
     """Return aggregated stats for the dashboard charts."""
+    screened_list = current_session.get("screened", [])
     resumes_uploaded = len(current_session.get("resumes", []))
-    screened = len(current_session.get("screened", []))
+    screened = len(screened_list)
     shortlisted = len(current_session.get("shortlisted", []))
     drafts = len(current_session.get("draft_emails", {}))
-    
+    offers = current_session.get("offers", {})
+
+    # Real score distribution from actual screened candidates.
+    buckets = {"80-100": 0, "60-79": 0, "40-59": 0, "0-39": 0}
+    scores = []
+    deep = 0
+    for c in screened_list:
+        s = c.get("final_score", 0) or 0
+        scores.append(s)
+        if c.get("deep_evaluated"):
+            deep += 1
+        if s >= 80:
+            buckets["80-100"] += 1
+        elif s >= 60:
+            buckets["60-79"] += 1
+        elif s >= 40:
+            buckets["40-59"] += 1
+        else:
+            buckets["0-39"] += 1
+
+    accepted = sum(1 for o in offers.values() if o.get("response") == "accepted")
+
     return {
         "funnel": {
             "Uploaded": resumes_uploaded,
             "Screened": screened,
             "Shortlisted": shortlisted,
-            "Invites Sent": drafts
+            "Invites Sent": drafts,
+            "Offers": len(offers),
+            "Accepted": accepted,
         },
-        "sources": {
-            "LinkedIn": 45,
-            "Website": 25,
-            "Referral": 15,
-            "Other": 15
-        }
+        # Real score distribution of screened candidates (replaces the old mock sources).
+        "score_distribution": buckets,
+        "stats": {
+            "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,
+            "top_score": max(scores) if scores else 0,
+            "deep_evaluated": deep,
+            "pre_screened": screened - deep,
+            "stage": store.get_stage(),
+        },
     }
 
 

@@ -502,13 +502,13 @@ function renderCandidates(candidates) {
         <div class="score-bars" style="flex-shrink:0;">
           <div class="score-block" style="text-align:right;">
             <div class="score-value" style="color:var(--warning);font-size:1.6rem">${c.final_score}/100</div>
-            <div class="score-label">Holistic Score</div>
+            <div class="score-label">${c.deep_evaluated ? '🧠 LLM Deep Score' : '⚡ BERT Match'}</div>
           </div>
           <div class="rank-badge" style="margin-left:12px;">#${i + 1}</div>
         </div>
       </div>
       <div style="padding-top:10px; border-top:1px dashed var(--border); font-size:0.82rem; color:var(--text-dim); line-height:1.5;">
-        <strong style="color:var(--text);">🧠 LLM Evaluation:</strong> ${c.evaluation_reasoning || 'No evaluation provided.'}
+        <strong style="color:var(--text);">${c.deep_evaluated ? '🧠 LLM Evaluation:' : '⚡ BERT pre-screen:'}</strong> ${c.evaluation_reasoning || 'No evaluation provided.'}
       </div>
     </div>`;
   }).join('');
@@ -978,9 +978,10 @@ async function loadAnalytics() {
   try {
     const data = await apiCall('/api/analytics');
     const fData = data.funnel;
-    const sData = data.sources;
+    const sData = data.score_distribution || {};
+    const stats = data.stats || {};
 
-    // Funnel Chart
+    // Funnel Chart (real counts)
     const ctxF = document.getElementById('funnelChart').getContext('2d');
     if (funnelChart) funnelChart.destroy();
     funnelChart = new Chart(ctxF, {
@@ -990,16 +991,13 @@ async function loadAnalytics() {
         datasets: [{
           label: 'Candidates',
           data: Object.values(fData),
-          backgroundColor: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b']
+          backgroundColor: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#22d3ee', '#34d399']
         }]
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } }
-      }
+      options: { responsive: true, plugins: { legend: { display: false } } }
     });
 
-    // Source Chart
+    // Score Distribution (real, from screened candidates)
     const ctxS = document.getElementById('sourceChart').getContext('2d');
     if (sourceChart) sourceChart.destroy();
     sourceChart = new Chart(ctxS, {
@@ -1008,13 +1006,18 @@ async function loadAnalytics() {
         labels: Object.keys(sData),
         datasets: [{
           data: Object.values(sData),
-          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+          backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
         }]
       },
-      options: {
-        responsive: true
-      }
+      options: { responsive: true }
     });
+
+    // Update the section heading + a small stats line if present.
+    const srcHead = document.getElementById('analytics-dist-title');
+    if (srcHead) {
+      srcHead.textContent = `Candidate Score Distribution — avg ${stats.avg_score || 0}, top ${stats.top_score || 0}` +
+        ` (${stats.deep_evaluated || 0} deep-evaluated, ${stats.pre_screened || 0} pre-screened)`;
+    }
 
   } catch (e) {
     console.error("Failed to load analytics", e);
