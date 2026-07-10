@@ -505,6 +505,23 @@ async def api_auto_schedule_interviews():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- AI Supervisor (Phase 3: LangGraph orchestrator) ---
+
+class AgentChatRequest(BaseModel):
+    message: str
+    history: List[dict] = []
+
+@app.post("/api/agent/chat")
+async def api_agent_chat(req: AgentChatRequest):
+    """Natural-language HR supervisor: a LangGraph agent that routes the request
+    to the right specialist tool(s) and can chain several in one turn."""
+    try:
+        from orchestrator import run_supervisor
+        return run_supervisor(req.message, req.history)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- Helpdesk ---
 
 @app.post("/api/helpdesk")

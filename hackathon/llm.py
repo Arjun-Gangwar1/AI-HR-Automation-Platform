@@ -86,4 +86,23 @@ def get_client() -> OpenAI:
 # The model name every agent passes to chat.completions.create(model=MODEL).
 MODEL = os.getenv("LLM_MODEL", "").strip() or _config()["default_model"]
 
+
+def get_langchain_llm(temperature: float = 0.2):
+    """
+    Return a LangChain chat model for the selected provider — used by the
+    LangGraph supervisor (Phase 3). Same provider/model/key as get_client(),
+    so the agentic layer also runs free on Groq.
+    """
+    from langchain_openai import ChatOpenAI
+    cfg = _config()
+    if cfg["key_env"]:
+        api_key = os.getenv(cfg["key_env"], "").strip() or "not-set"
+    else:
+        api_key = "ollama"
+    kwargs = {"model": MODEL, "api_key": api_key, "temperature": temperature}
+    if cfg["base_url"]:
+        kwargs["base_url"] = cfg["base_url"]
+    return ChatOpenAI(**kwargs)
+
+
 print(f"[LLM] Provider='{PROVIDER}', model='{MODEL}'.")

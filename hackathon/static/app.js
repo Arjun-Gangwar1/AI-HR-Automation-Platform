@@ -20,6 +20,7 @@ let state = {
 
 // ---------- Navigation ----------
 const pagesMeta = {
+  supervisor: { title: 'AI Supervisor', sub: 'LangGraph agent that routes to specialist HR tools' },
   pipeline: { title: 'Pipeline', sub: 'End-to-end recruitment stage tracker (restart-safe)' },
   jd: { title: 'JD Generator', sub: 'Create diverse, high-quality job descriptions via AI' },
   status: { title: 'Job Status', sub: 'Monitor posting activity and auto-relaxation' },
@@ -1387,6 +1388,54 @@ async function scheduleIntroMeeting() {
   } catch (e) {
     statusEl.textContent = 'Error: ' + e.message;
   }
+}
+
+// ═══════════════════════════════
+//  PHASE 3: AI SUPERVISOR (LangGraph)
+// ═══════════════════════════════
+
+let supervisorHistory = [];
+
+async function sendSupervisorMessage() {
+  const input = document.getElementById('supervisor-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const win = document.getElementById('supervisor-window');
+
+  const u = document.createElement('div');
+  u.className = 'chat-bubble user';
+  u.textContent = msg;
+  win.appendChild(u);
+  input.value = '';
+  win.scrollTop = win.scrollHeight;
+
+  const b = document.createElement('div');
+  b.className = 'chat-bubble bot';
+  b.innerHTML = '<span style="color:var(--text-muted)">Thinking… (routing to tools)</span>';
+  win.appendChild(b);
+  win.scrollTop = win.scrollHeight;
+
+  try {
+    const d = await apiCall('/api/agent/chat', 'POST', { message: msg, history: supervisorHistory });
+    let toolsBadge = '';
+    if (d.tools_used && d.tools_used.length) {
+      toolsBadge = `<div style="margin-top:8px;font-size:0.72rem;color:var(--accent2)">🔧 tools used: ${[...new Set(d.tools_used)].join(', ')}</div>`;
+    }
+    b.innerHTML = (d.reply || '(no reply)').replace(/\n/g, '<br/>') + toolsBadge;
+    const modelEl = document.getElementById('supervisor-model');
+    if (modelEl) modelEl.textContent = (d.provider || '') + ' · ' + (d.model || '');
+    supervisorHistory.push({ role: 'user', content: msg });
+    supervisorHistory.push({ role: 'assistant', content: d.reply || '' });
+    if (supervisorHistory.length > 10) supervisorHistory = supervisorHistory.slice(-10);
+  } catch (e) {
+    b.innerHTML = `<span style="color:#ef4444">Error: ${e.message}</span>`;
+  }
+  win.scrollTop = win.scrollHeight;
+}
+
+function quickSupervisor(text) {
+  document.getElementById('supervisor-input').value = text;
+  sendSupervisorMessage();
 }
 
 // ---------- Init ----------

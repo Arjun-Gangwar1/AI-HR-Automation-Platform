@@ -24,6 +24,9 @@
     </div>
     <div class="sidebar-nav">
       <div class="nav-section-label">Overview</div>
+      <div class="nav-item" data-page="supervisor" onclick="showPage('supervisor',this)">
+        <span class="icon">🧭</span> AI Supervisor
+      </div>
       <div class="nav-item" data-page="pipeline" onclick="showPage('pipeline',this)">
         <span class="icon">🗺️</span> Pipeline
       </div>
@@ -595,6 +598,43 @@
             <button class="btn btn-outline btn-sm" onclick="scheduleIntroMeeting()">📅 Schedule Intro Meeting
               (auto-slot)</button>
             <span id="intro-meeting-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAGE: AI SUPERVISOR ═══ -->
+      <div id="page-supervisor" class="page" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🧭 AI Supervisor — LangGraph Agent</div>
+            <div style="font-size:0.78rem;color:var(--text-muted)">One brain, many tools · <span
+                id="supervisor-model">—</span></div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px">Ask in plain English — the supervisor
+            picks the right specialist tool(s): JD writing, resume scoring, interview questions, emails, HR policy, offer
+            letters, negotiation, and pipeline status. It can chain several in one turn.</div>
+          <div class="chat-window" id="supervisor-window">
+            <div class="chat-bubble bot">👋 I'm your HR Supervisor. Try: <em>"Write a JD for a senior ML engineer, then
+                give me 5 interview questions for a candidate who's built RAG chatbots."</em></div>
+          </div>
+          <div class="chat-quick-replies"
+            style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;padding:0 8px">
+            <button class="style-chip"
+              onclick="quickSupervisor('Write a JD for a Senior Backend Engineer skilled in Go and Kubernetes.')">📝 Draft
+              a JD</button>
+            <button class="style-chip"
+              onclick="quickSupervisor('Give me 5 interview questions for a data scientist role.')">🎯 Interview
+              Qs</button>
+            <button class="style-chip" onclick="quickSupervisor('What stage is our hiring pipeline at?')">📊 Pipeline
+              status</button>
+            <button class="style-chip"
+              onclick="quickSupervisor('A candidate declined our $120k offer wanting more. Help me negotiate.')">🤝
+              Negotiation</button>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="supervisor-input" placeholder="Ask the HR supervisor anything…"
+              onkeydown="if(event.key==='Enter') sendSupervisorMessage()" />
+            <button class="btn btn-primary" id="btn-supervisor-send" onclick="sendSupervisorMessage()">Send ➤</button>
           </div>
         </div>
       </div>
